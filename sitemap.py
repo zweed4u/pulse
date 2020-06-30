@@ -38,10 +38,12 @@ class Sitemap:
                         f"[!] Match - {product['image:image']['image:title']} - {product['loc']}"
                     )
                     # TODO - print permalinks to stdout
-            product_name_url_map.update(
-                {product["image:image"]["image:title"]: product["loc"]}
+            product_url = product["loc"]
+            product_name = product.get("image:image", {}).get(
+                "image:title", product_url.split("/")[-1]
             )
-        # print(json.dumps(product_name_url_map, indent=4))
+            product_name_url_map.update({product_name: product_url})
+        print(json.dumps(product_name_url_map, indent=4))
         return product_name_url_map
 
 
