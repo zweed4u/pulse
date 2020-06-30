@@ -43,7 +43,7 @@ class Sitemap:
                 "image:title", product_url.split("/")[-1]
             )
             product_name_url_map.update({product_name: product_url})
-        print(json.dumps(product_name_url_map, indent=4))
+        # print(json.dumps(product_name_url_map, indent=4))
         return product_name_url_map
 
 
