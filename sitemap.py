@@ -34,7 +34,14 @@ class Sitemap:
                 )
                 time.sleep(self.retry_wait_seconds)
         product_name_url_map = dict()
-        product_dict = xmltodict.parse(response.content)
+        response_content = response.content
+        try:
+            product_dict = xmltodict.parse(response_content)
+        except Exception as exc:
+            print(
+                f"[!] {datetime.datetime.now()} :: Unable to parse xml to dict - raw content: {response_content}"
+            )
+            return {}
         products = product_dict.get("urlset", {}).get("url")
         if products is None:
             return {}
@@ -48,7 +55,30 @@ class Sitemap:
                     print(
                         f"[!] {datetime.datetime.now()} :: Match - {product['image:image']['image:title']} - {product['loc']}"
                     )
-                    # TODO - print permalinks to stdout
+                    tries = 1
+                    while tries != 5:
+                        try:
+                            product_detail_json = requests.request(
+                                "GET", f"{product['loc']}.json"
+                            ).json()
+                            break
+                        except Exception as exc:
+                            print(
+                                f"[!] {datetime.datetime.now()} :: Unable to get json for product - trying {5-tries} more times"
+                            )
+                            tries += 1
+                            time.sleep(1)
+                    if tries == 5:
+                        print(
+                            f"[!] {datetime.datetime.now()} :: Giving up on json/details of matching product"
+                        )
+                    else:
+                        variants = product_detail_json["product"]["variants"]
+                        for variant in variants:
+                            print(
+                                f"\t{variant['title']} :: {self.base}/cart/{variant['id']}:1"
+                            )
+                        print()
             product_url = product["loc"]
             product_name = product.get("image:image", {}).get(
                 "image:title", product_url.split("/")[-1]
@@ -81,6 +111,8 @@ if __name__ == "__main__":
         )
         updated_product_map = sitemap.fetch_product_map(args.keyword)
         if updated_product_map != sitemap.product_map:
+            # TODO - compare keys in updated_items
+            #  ie. determine category for each: added item, removed item, edited item
             updated_items = set(updated_product_map.items()) ^ set(
                 sitemap.product_map.items()
             )
