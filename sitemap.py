@@ -3,6 +3,7 @@ import sys
 import json
 import time
 import argparse
+import datetime
 import requests
 import xmltodict
 from typing import Dict, Tuple, Optional
@@ -29,7 +30,7 @@ class Sitemap:
                 break
             except Exception as exc:
                 print(
-                    f"[!] {exc} - Sleeping for {self.retry_wait_seconds} seconds then retrying request"
+                    f"[!] {datetime.datetime.now()} :: {exc} - Sleeping for {self.retry_wait_seconds} seconds then retrying request"
                 )
                 time.sleep(self.retry_wait_seconds)
         product_name_url_map = dict()
@@ -45,7 +46,7 @@ class Sitemap:
                 # keyword argument supplied and passed here - break on find
                 if args[0].lower() in product["image:image"]["image:title"].lower():
                     print(
-                        f"[!] Match - {product['image:image']['image:title']} - {product['loc']}"
+                        f"[!] {datetime.datetime.now()} :: Match - {product['image:image']['image:title']} - {product['loc']}"
                     )
                     # TODO - print permalinks to stdout
             product_url = product["loc"]
@@ -75,12 +76,14 @@ if __name__ == "__main__":
     sitemap = Sitemap(args.base_url)
 
     while True:
-        print(f"{len(list(sitemap.product_map.keys()))} products cataloged...")
+        print(
+            f"{datetime.datetime.now()} :: {len(list(sitemap.product_map.keys()))} products cataloged..."
+        )
         updated_product_map = sitemap.fetch_product_map(args.keyword)
         if updated_product_map != sitemap.product_map:
             updated_items = set(updated_product_map.items()) ^ set(
                 sitemap.product_map.items()
             )
-            print(f"Updated items: {updated_items}")
+            print(f"{datetime.datetime.now()} :: Updated items: {updated_items}")
         sitemap.product_map = updated_product_map
         time.sleep(args.poll)
