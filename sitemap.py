@@ -51,6 +51,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url")
     parser.add_argument("--keyword")
+    parser.add_argument("--poll", type=int, default=10)
     args = parser.parse_args()
     domains = ["com", "co", "it", "net", "org", "pl"]
     if args.base_url is None or not any(
@@ -72,4 +73,4 @@ if __name__ == "__main__":
             )
             print(f"Updated items: {updated_items}")
         sitemap.product_map = updated_product_map
-        time.sleep(5)
+        time.sleep(args.poll)
