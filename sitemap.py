@@ -15,13 +15,23 @@ class Sitemap:
             base_url = f"http://{base_url}"
         self.base = base_url
         self.product_map = self.fetch_product_map()
+        self.retry_wait_seconds = 3
 
     def fetch_product_map(self, *args: Tuple[Optional[str]]) -> Dict[str, str]:
-        response = requests.request(
-            "GET",
-            f"{self.base}/sitemap_products_1.xml",
-            params={"from": 1, "to": 9999999999999},
-        )
+        while True:
+            # keep trying until we get a response
+            try:
+                response = requests.request(
+                    "GET",
+                    f"{self.base}/sitemap_products_1.xml",
+                    params={"from": 1, "to": 9999999999999},
+                )
+                break
+            except Exception as exc:
+                print(
+                    f"[!] {exc} - Sleeping for {self.retry_wait_seconds} seconds then retrying request"
+                )
+                time.sleep(self.retry_wait_seconds)
         product_name_url_map = dict()
         product_dict = xmltodict.parse(response.content)
         products = product_dict.get("urlset", {}).get("url")
