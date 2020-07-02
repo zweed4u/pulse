@@ -8,6 +8,11 @@ import requests
 import xmltodict
 from typing import Dict, Tuple, Optional
 
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+END = "\033[00m"
+
 
 class Sitemap:
     def __init__(self, base_url: str):
@@ -32,13 +37,13 @@ class Sitemap:
                 break
             except Exception as exc:
                 print(
-                    f"[!] {datetime.datetime.now()} :: {exc} - Sleeping for {self.retry_wait_seconds} seconds then retrying request - trying {5-tries} more times"
+                    f"[!] {datetime.datetime.now()} :: {YELLOW}{exc} - Sleeping for {self.retry_wait_seconds} seconds then retrying request - trying {5-tries} more times{END}"
                 )
                 tries += 1
                 time.sleep(self.retry_wait_seconds)
         if tries == 5:
             print(
-                f"[!] {datetime.datetime.now()} :: Giving up on updating catalog - using stale version this pass"
+                f"[!] {datetime.datetime.now()} :: {RED}Giving up on updating catalog - using stale version this pass{END}"
             )
             return self.catalog
         else:
@@ -48,7 +53,7 @@ class Sitemap:
                 product_dict = xmltodict.parse(response_content)
             except Exception as exc:
                 print(
-                    f"[!] {datetime.datetime.now()} :: Unable to parse xml to dict - raw content: {response_content}\nNot parsing - using stale catalog"
+                    f"[!] {datetime.datetime.now()} :: {RED}Unable to parse xml to dict - raw content: {response_content}\nNot parsing - using stale catalog{END}"
                 )
 
                 return self.catalog
@@ -63,7 +68,7 @@ class Sitemap:
                 # keyword argument supplied and passed here - break on find
                 if args[0].lower() in product["image:image"]["image:title"].lower():
                     print(
-                        f"[!] {datetime.datetime.now()} :: Match - {product['image:image']['image:title']} - {product['loc']}"
+                        f"[!] {datetime.datetime.now()} :: {GREEN}Match - {product['image:image']['image:title']} - {product['loc']}{END}"
                     )
                     tries = 1
                     while tries != 5:
@@ -74,19 +79,19 @@ class Sitemap:
                             break
                         except Exception as exc:
                             print(
-                                f"[!] {datetime.datetime.now()} :: Unable to get json for product - trying {5-tries} more times"
+                                f"[!] {datetime.datetime.now()} :: {YELLOW}Unable to get json for product - trying {5-tries} more times{END}"
                             )
                             tries += 1
                             time.sleep(1)
                     if tries == 5:
                         print(
-                            f"[!] {datetime.datetime.now()} :: Giving up on json/details of matching product"
+                            f"[!] {datetime.datetime.now()} :: {RED}Giving up on json/details of matching product{END}"
                         )
                     else:
                         variants = product_detail_json["product"]["variants"]
                         for variant in variants:
                             print(
-                                f"\t{variant['title']} :: {self.base}/cart/{variant['id']}:1"
+                                f"\t{GREEN}{variant['title']} :: {self.base}/cart/{variant['id']}:1{END}"
                             )
                         print()
             product_url = product["loc"]
@@ -109,7 +114,7 @@ if __name__ == "__main__":
         args.base_url.endswith(domain) for domain in domains
     ):
         print(
-            f"Please specify a --base-url with any of the following domains: {domains}\nie. --base-url=shoppersparadise.com"
+            f"{RED}Please specify a --base-url with any of the following domains: {domains}\nie. --base-url=shoppersparadise.com{END}"
         )
         sys.exit()
     print(f"Parsing sitemap for: {args.base_url}")
@@ -132,17 +137,17 @@ if __name__ == "__main__":
                 ) and current_changed_product_name in list(updated_catalog.keys()):
                     # item in both old and new catalog - url must have been updated/edited
                     print(
-                        f"[!] {datetime.datetime.now()} :: [{current_changed_product_name}] url was UPDATED -> {current_changed_product_url}"
+                        f"[!] {datetime.datetime.now()} :: {YELLOW}[{current_changed_product_name}] url was UPDATED -> {current_changed_product_url}{END}"
                     )
                 elif current_changed_product_name in list(updated_catalog.keys()):
                     # item is in the new catalog but not the old one - new item added
                     print(
-                        f"[!] {datetime.datetime.now()} :: [{current_changed_product_name}] item was ADDED -> {current_changed_product_url}"
+                        f"[!] {datetime.datetime.now()} :: {GREEN}[{current_changed_product_name}] item was ADDED -> {current_changed_product_url}{END}"
                     )
                 else:
                     # item not in both updated and old, and not only in updated catalog - must be removed
                     print(
-                        f"[!] {datetime.datetime.now()} :: [{current_changed_product_name}] item was REMOVED -> {current_changed_product_url}"
+                        f"[!] {datetime.datetime.now()} :: {RED}[{current_changed_product_name}] item was REMOVED -> {current_changed_product_url}{END}"
                     )
             # print(f"{datetime.datetime.now()} :: Updated items: {updated_items}")
         sitemap.catalog = updated_catalog
