@@ -59,22 +59,29 @@ class Sitemap:
                 return self.catalog
         products = product_dict.get("urlset", {}).get("url")
         if products is None:
-            return {}
+            print(
+                f"[!] {datetime.datetime.now()} :: {RED}Unexpected XML tree structure - using stale catalog{END}"
+            )
+            return self.catalog
         for product in product_dict["urlset"]["url"]:
             if product["loc"] in response.url:
                 # filter out the root xml node
                 continue
+            product_url = product["loc"]
+            product_name = product.get("image:image", {}).get(
+                "image:title", product_url.split("/")[-1]
+            )
             if len(args) != 0 and args[0] is not None:
                 # keyword argument supplied and passed here - break on find
-                if args[0].lower() in product["image:image"]["image:title"].lower():
+                if args[0].lower() in product_name.lower():
                     print(
-                        f"[!] {datetime.datetime.now()} :: {GREEN}Match - {product['image:image']['image:title']} - {product['loc']}{END}"
+                        f"[!] {datetime.datetime.now()} :: {GREEN}Match - {product_name} - {product_url}{END}"
                     )
                     tries = 1
                     while tries != 5:
                         try:
                             product_detail_json = requests.request(
-                                "GET", f"{product['loc']}.json"
+                                "GET", f"{product_url}.json"
                             ).json()
                             break
                         except Exception as exc:
@@ -94,10 +101,7 @@ class Sitemap:
                                 f"\t{GREEN}{variant['title']} :: {self.base}/cart/{variant['id']}:1{END}"
                             )
                         print()
-            product_url = product["loc"]
-            product_name = product.get("image:image", {}).get(
-                "image:title", product_url.split("/")[-1]
-            )
+
             product_name_url_map.update({product_name: product_url})
         # print(json.dumps(product_name_url_map, indent=4))
         return product_name_url_map
