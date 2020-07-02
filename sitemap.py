@@ -77,6 +77,8 @@ class Sitemap:
                     print(
                         f"[!] {datetime.datetime.now()} :: {GREEN}Match - {product_name} - {product_url}{END}"
                     )
+                    # TODO pull this out into a get_permalinks() function
+                    # print permalinks for the matching product
                     tries = 1
                     while tries != 5:
                         try:
@@ -148,6 +150,31 @@ if __name__ == "__main__":
                     print(
                         f"[!] {datetime.datetime.now()} :: {GREEN}[{current_changed_product_name}] item was ADDED -> {current_changed_product_url}{END}"
                     )
+                    # TODO pull this out into a get_permalinks() function
+                    tries = 1
+                    while tries != 3:
+                        try:
+                            product_detail_json = requests.request(
+                                "GET", f"{current_changed_product_url}.json"
+                            ).json()
+                            break
+                        except Exception as exc:
+                            print(
+                                f"[!] {datetime.datetime.now()} :: {YELLOW}Unable to get json for product - trying {3-tries} more times{END}"
+                            )
+                            tries += 1
+                            time.sleep(1)
+                    if tries == 3:
+                        print(
+                            f"[!] {datetime.datetime.now()} :: {RED}Giving up on json/details of newly added product{END}"
+                        )
+                    else:
+                        variants = product_detail_json["product"]["variants"]
+                        for variant in variants:
+                            print(
+                                f"\t{GREEN}{variant['title']} :: {sitemap.base}/cart/{variant['id']}:1{END}"
+                            )
+                        print()
                 else:
                     # item not in both updated and old, and not only in updated catalog - must be removed
                     print(
