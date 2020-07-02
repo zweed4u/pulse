@@ -15,11 +15,13 @@ class Sitemap:
             # add schema
             base_url = f"http://{base_url}"
         self.base = base_url
-        self.product_map = self.fetch_product_map()
+        self.catalog = dict()
         self.retry_wait_seconds = 3
+        self.catalog = self.fetch_catalog()
 
-    def fetch_product_map(self, *args: Tuple[Optional[str]]) -> Dict[str, str]:
-        while True:
+    def fetch_catalog(self, *args: Tuple[Optional[str]]) -> Dict[str, str]:
+        tries = 1
+        while tries != 5:
             # keep trying until we get a response
             try:
                 response = requests.request(
@@ -30,18 +32,26 @@ class Sitemap:
                 break
             except Exception as exc:
                 print(
-                    f"[!] {datetime.datetime.now()} :: {exc} - Sleeping for {self.retry_wait_seconds} seconds then retrying request"
+                    f"[!] {datetime.datetime.now()} :: {exc} - Sleeping for {self.retry_wait_seconds} seconds then retrying request - trying {5-tries} more times"
                 )
+                tries += 1
                 time.sleep(self.retry_wait_seconds)
-        product_name_url_map = dict()
-        response_content = response.content
-        try:
-            product_dict = xmltodict.parse(response_content)
-        except Exception as exc:
+        if tries == 5:
             print(
-                f"[!] {datetime.datetime.now()} :: Unable to parse xml to dict - raw content: {response_content}"
+                f"[!] {datetime.datetime.now()} :: Giving up on updating catalog - using stale version this pass"
             )
-            return {}
+            return self.catalog
+        else:
+            product_name_url_map = dict()
+            response_content = response.content
+            try:
+                product_dict = xmltodict.parse(response_content)
+            except Exception as exc:
+                print(
+                    f"[!] {datetime.datetime.now()} :: Unable to parse xml to dict - raw content: {response_content}\nNot parsing - using stale catalog"
+                )
+
+                return self.catalog
         products = product_dict.get("urlset", {}).get("url")
         if products is None:
             return {}
@@ -107,15 +117,33 @@ if __name__ == "__main__":
 
     while True:
         print(
-            f"{datetime.datetime.now()} :: {len(list(sitemap.product_map.keys()))} products cataloged..."
+            f"{datetime.datetime.now()} :: {len(list(sitemap.catalog.keys()))} products cataloged..."
         )
-        updated_product_map = sitemap.fetch_product_map(args.keyword)
-        if updated_product_map != sitemap.product_map:
+        updated_catalog = sitemap.fetch_catalog(args.keyword)
+        if updated_catalog != sitemap.catalog:
             # TODO - compare keys in updated_items
             #  ie. determine category for each: added item, removed item, edited item
-            updated_items = set(updated_product_map.items()) ^ set(
-                sitemap.product_map.items()
-            )
-            print(f"{datetime.datetime.now()} :: Updated items: {updated_items}")
-        sitemap.product_map = updated_product_map
+            updated_items = set(updated_catalog.items()) ^ set(sitemap.catalog.items())
+            for item in updated_items:
+                current_changed_product_name = item[0]
+                current_changed_product_url = item[1]
+                if current_changed_product_name in list(
+                    sitemap.catalog.keys()
+                ) and current_changed_product_name in list(updated_catalog.keys()):
+                    # item in both old and new catalog - url must have been updated/edited
+                    print(
+                        f"[!] {datetime.datetime.now()} :: [{current_changed_product_name}] url was UPDATED -> {current_changed_product_url}"
+                    )
+                elif current_changed_product_name in list(updated_catalog.keys()):
+                    # item is in the new catalog but not the old one - new item added
+                    print(
+                        f"[!] {datetime.datetime.now()} :: [{current_changed_product_name}] item was ADDED -> {current_changed_product_url}"
+                    )
+                else:
+                    # item not in both updated and old, and not only in updated catalog - must be removed
+                    print(
+                        f"[!] {datetime.datetime.now()} :: [{current_changed_product_name}] item was REMOVED -> {current_changed_product_url}"
+                    )
+            # print(f"{datetime.datetime.now()} :: Updated items: {updated_items}")
+        sitemap.catalog = updated_catalog
         time.sleep(args.poll)
