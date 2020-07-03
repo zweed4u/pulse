@@ -11,6 +11,7 @@ from typing import Dict, Tuple, Optional
 RED = "\033[91m"
 GREEN = "\033[92m"
 YELLOW = "\033[93m"
+CYAN = "\033[96m"
 END = "\033[00m"
 
 
@@ -37,13 +38,13 @@ class Sitemap:
                 break
             except Exception as exc:
                 print(
-                    f"[!] {datetime.datetime.now()} :: {YELLOW}{exc} - Sleeping for {self.retry_wait_seconds} seconds then retrying request - trying {5-tries} more times{END}"
+                    f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {YELLOW}{exc} - Unable to get sitemap xml - Sleeping for {self.retry_wait_seconds} seconds then retrying request - trying {5-tries} more times{END}"
                 )
                 tries += 1
                 time.sleep(self.retry_wait_seconds)
         if tries == 5:
             print(
-                f"[!] {datetime.datetime.now()} :: {RED}Giving up on updating catalog - using stale version this pass{END}"
+                f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {RED}Giving up on updating catalog - using stale version this pass{END}"
             )
             return self.catalog
         else:
@@ -53,14 +54,14 @@ class Sitemap:
                 product_dict = xmltodict.parse(response_content)
             except Exception as exc:
                 print(
-                    f"[!] {datetime.datetime.now()} :: {RED}Unable to parse xml to dict - raw content: {response_content}\nNot parsing - using stale catalog{END}"
+                    f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {RED}Unable to parse xml to dict - raw content: {response_content}\nNot parsing - using stale catalog{END}"
                 )
 
                 return self.catalog
         products = product_dict.get("urlset", {}).get("url")
         if products is None:
             print(
-                f"[!] {datetime.datetime.now()} :: {RED}Unexpected XML tree structure - using stale catalog{END}"
+                f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {RED}Unexpected XML tree structure - using stale catalog{END}"
             )
             return self.catalog
         for product in product_dict["urlset"]["url"]:
@@ -75,7 +76,7 @@ class Sitemap:
                 # keyword argument supplied and passed here - break on find
                 if args[0].lower() in product_name.lower():
                     print(
-                        f"[!] {datetime.datetime.now()} :: {GREEN}Match - {product_name} - {product_url}{END}"
+                        f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {GREEN}Match - {product_name} - {product_url}{END}"
                     )
                     # TODO pull this out into a get_permalinks() function
                     # print permalinks for the matching product
@@ -88,13 +89,13 @@ class Sitemap:
                             break
                         except Exception as exc:
                             print(
-                                f"[!] {datetime.datetime.now()} :: {YELLOW}Unable to get json for product - trying {5-tries} more times{END}"
+                                f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {YELLOW}Unable to get json for product - trying {5-tries} more times{END}"
                             )
                             tries += 1
                             time.sleep(1)
                     if tries == 5:
                         print(
-                            f"[!] {datetime.datetime.now()} :: {RED}Giving up on json/details of matching product{END}"
+                            f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {RED}Giving up on json/details of matching product{END}"
                         )
                     else:
                         variants = product_detail_json["product"]["variants"]
@@ -123,12 +124,12 @@ if __name__ == "__main__":
             f"{RED}Please specify a --base-url with any of the following domains: {domains}\nie. --base-url=shoppersparadise.com{END}"
         )
         sys.exit()
-    print(f"Parsing sitemap for: {args.base_url}")
+    print(f"{GREEN}Parsing sitemap for: {args.base_url}{END}")
     sitemap = Sitemap(args.base_url)
 
     while True:
         print(
-            f"{datetime.datetime.now()} :: {len(list(sitemap.catalog.keys()))} products cataloged..."
+            f"{CYAN}{datetime.datetime.now()}{END} :: {len(list(sitemap.catalog.keys()))} products cataloged..."
         )
         updated_catalog = sitemap.fetch_catalog(args.keyword)
         if updated_catalog != sitemap.catalog:
@@ -143,12 +144,12 @@ if __name__ == "__main__":
                 ) and current_changed_product_name in list(updated_catalog.keys()):
                     # item in both old and new catalog - url must have been updated/edited
                     print(
-                        f"[!] {datetime.datetime.now()} :: {YELLOW}[{current_changed_product_name}] url was UPDATED -> {current_changed_product_url}{END}"
+                        f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {YELLOW}[{current_changed_product_name}] url was UPDATED -> {current_changed_product_url}{END}"
                     )
                 elif current_changed_product_name in list(updated_catalog.keys()):
                     # item is in the new catalog but not the old one - new item added
                     print(
-                        f"[!] {datetime.datetime.now()} :: {GREEN}[{current_changed_product_name}] item was ADDED -> {current_changed_product_url}{END}"
+                        f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {GREEN}[{current_changed_product_name}] item was ADDED -> {current_changed_product_url}{END}"
                     )
                     # TODO pull this out into a get_permalinks() function
                     tries = 1
@@ -160,13 +161,13 @@ if __name__ == "__main__":
                             break
                         except Exception as exc:
                             print(
-                                f"[!] {datetime.datetime.now()} :: {YELLOW}Unable to get json for product - trying {3-tries} more times{END}"
+                                f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {YELLOW}Unable to get json for product - trying {3-tries} more times{END}"
                             )
                             tries += 1
                             time.sleep(1)
                     if tries == 3:
                         print(
-                            f"[!] {datetime.datetime.now()} :: {RED}Giving up on json/details of newly added product{END}"
+                            f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {RED}Giving up on json/details of newly added product{END}"
                         )
                     else:
                         variants = product_detail_json["product"]["variants"]
@@ -178,7 +179,7 @@ if __name__ == "__main__":
                 else:
                     # item not in both updated and old, and not only in updated catalog - must be removed
                     print(
-                        f"[!] {datetime.datetime.now()} :: {RED}[{current_changed_product_name}] item was REMOVED -> {current_changed_product_url}{END}"
+                        f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {RED}[{current_changed_product_name}] item was REMOVED -> {current_changed_product_url}{END}"
                     )
             # print(f"{datetime.datetime.now()} :: Updated items: {updated_items}")
         sitemap.catalog = updated_catalog
