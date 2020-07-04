@@ -146,6 +146,7 @@ if __name__ == "__main__":
         sys.exit()
 
     # read in config
+    # TODO handle file not existing
     current_directory = os.path.dirname(os.path.realpath(__file__))
     with open(f"{current_directory}/config.json") as json_file:
         config_data = json.load(json_file)

@@ -7,7 +7,11 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 )
+
+const Config = "config.json"
 
 type Urls struct {
 	XMLName xml.Name
@@ -35,7 +39,34 @@ func main() {
 	//pollPtr := flag.Int("poll", 10, "poll duration for sitemap refresh sweeps")
 	flag.Parse()
 
-	fmt.Println(*urlPtr)
+	log.Println(*urlPtr)
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println(dir)
+	configPath := fmt.Sprintf("%s/%s", dir, Config)
+	log.Println(configPath)
+
+	// make sure file exists
+	var fileExists bool
+	info, err := os.Stat(configPath)
+	if os.IsNotExist(err) {
+		fileExists = false
+	} else {
+		fileExists = !info.IsDir()
+	}
+
+	log.Println(fileExists)
+	// read in the config
+	if fileExists {
+		jsonFile, err := os.Open(configPath)
+		if err != nil {
+			log.Fatal(err)
+		}
+		// TODO parse json here
+	}
+
 	productCatalog := make(map[string]string)
 	resp, err := http.Get("http://a7.co/sitemap_products_1.xml?from=1&to=9999999999999")
 	if err != nil {
