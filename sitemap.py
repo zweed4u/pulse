@@ -100,8 +100,16 @@ class Sitemap:
                     else:
                         variants = product_detail_json["product"]["variants"]
                         for variant in variants:
+                            inventory = variant.get("inventory_quantity", 0)
+                            if inventory == 0:
+                                stock_color = RED
+                            elif inventory <= 15:
+                                stock_color = YELLOW
+                            else:
+                                stock_color = GREEN
+                            price = variant.get("price", "?")
                             print(
-                                f"\t{GREEN}{variant['title']} :: {self.base}/cart/{variant['id']}:1{END}"
+                                f"\t{GREEN}{variant['title']} :: {self.base}/cart/{variant['id']}:1{END} :: {stock_color}Stock: {inventory}{END} :: {GREEN}${price}{END}"
                             )
                         print()
 
