@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"flag"
 	"fmt"
@@ -31,6 +32,10 @@ type Image struct {
 	ImageLoc     string `xml:"loc"`
 	ImageTitle   string `xml:"title"`
 	ImageCaption string `xml:"caption"`
+}
+
+type PulseConfig struct {
+	SlackWebHook string `json:"slack-webhook-url"`
 }
 
 func main() {
@@ -64,7 +69,18 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		// TODO parse json here
+		content, err := ioutil.ReadAll(jsonFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		// parse json here
+		var config PulseConfig
+		// unmarshal it
+		err = json.Unmarshal(content, &config)
+		if err != nil {
+			fmt.Println("error:", err)
+		}
+		log.Println(config.SlackWebHook)
 	}
 
 	productCatalog := make(map[string]string)
