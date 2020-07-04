@@ -181,7 +181,7 @@ if __name__ == "__main__":
                     )
                     if slack_requester.url is not None:
                         slack_requester.send_message(
-                            f"{current_change_product_name}: {current_changed_product_url}"
+                            f"<!channel> {current_changed_product_name}: {current_changed_product_url}"
                         )
                     sitemap.print_variants(current_changed_product_url)
                 else:
