@@ -108,6 +108,7 @@ class Sitemap:
                             else:
                                 stock_color = GREEN
                             price = variant.get("price", "?")
+                            # TODO maybe add webhook here
                             print(
                                 f"\t{GREEN}{variant['title']} :: {self.base}/cart/{variant['id']}:1{END} :: {stock_color}Stock: {inventory}{END} :: {GREEN}${price}{END}"
                             )
