@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import os
 import sys
 import json
 import time
@@ -24,6 +25,41 @@ class Sitemap:
         self.catalog = dict()
         self.retry_wait_seconds = 3
         self.catalog = self.fetch_catalog()
+
+    def print_variants(self, product_url: str):
+        tries = 1
+        while tries != 5:
+            try:
+                product_detail_json = requests.request(
+                    "GET", f"{product_url}.json"
+                ).json()
+                break
+            except Exception as exc:
+                print(
+                    f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {YELLOW}Unable to get json for product - trying {5-tries} more times{END}"
+                )
+                tries += 1
+                time.sleep(1)
+        if tries == 5:
+            print(
+                f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {RED}Giving up on json/details of matching/newly added product{END}"
+            )
+        else:
+            variants = product_detail_json["product"]["variants"]
+            for variant in variants:
+                inventory = variant.get("inventory_quantity", 0)
+                if inventory == 0:
+                    stock_color = RED
+                elif inventory <= 15:
+                    stock_color = YELLOW
+                else:
+                    stock_color = GREEN
+                price = variant.get("price", "?")
+                # TODO maybe add webhook call here? aggregate variants - concatenate variants - be mindful of character limit
+                print(
+                    f"\t{GREEN}{variant['title']} :: {self.base}/cart/{variant['id']}:1{END} :: {stock_color}Stock: {inventory}{END} :: {GREEN}${price}{END}"
+                )
+            print()
 
     def fetch_catalog(self, *args: Tuple[Optional[str]]) -> Dict[str, str]:
         tries = 1
@@ -78,45 +114,20 @@ class Sitemap:
                     print(
                         f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {GREEN}Match - {product_name} - {product_url}{END}"
                     )
-                    # TODO pull this out into a get_permalinks() function
                     # print permalinks for the matching product
-                    tries = 1
-                    while tries != 5:
-                        try:
-                            product_detail_json = requests.request(
-                                "GET", f"{product_url}.json"
-                            ).json()
-                            break
-                        except Exception as exc:
-                            print(
-                                f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {YELLOW}Unable to get json for product - trying {5-tries} more times{END}"
-                            )
-                            tries += 1
-                            time.sleep(1)
-                    if tries == 5:
-                        print(
-                            f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {RED}Giving up on json/details of matching product{END}"
-                        )
-                    else:
-                        variants = product_detail_json["product"]["variants"]
-                        for variant in variants:
-                            inventory = variant.get("inventory_quantity", 0)
-                            if inventory == 0:
-                                stock_color = RED
-                            elif inventory <= 15:
-                                stock_color = YELLOW
-                            else:
-                                stock_color = GREEN
-                            price = variant.get("price", "?")
-                            # TODO maybe add webhook here
-                            print(
-                                f"\t{GREEN}{variant['title']} :: {self.base}/cart/{variant['id']}:1{END} :: {stock_color}Stock: {inventory}{END} :: {GREEN}${price}{END}"
-                            )
-                        print()
+                    self.print_variants(product_url)
 
             product_name_url_map.update({product_name: product_url})
         # print(json.dumps(product_name_url_map, indent=4))
         return product_name_url_map
+
+
+class SlackRequester:
+    def __init__(self, url: Optional[str]):
+        self.url = url
+
+    def send_message(self, message: str):
+        slack_response = requests.request("POST", self.url, json={"text": message})
 
 
 if __name__ == "__main__":
@@ -133,6 +144,14 @@ if __name__ == "__main__":
             f"{RED}Please specify a --base-url with any of the following domains: {domains}\nie. --base-url=shoppersparadise.com{END}"
         )
         sys.exit()
+
+    # read in config
+    current_directory = os.path.dirname(os.path.realpath(__file__))
+    with open(f"{current_directory}/config.json") as json_file:
+        config_data = json.load(json_file)
+    slack_webhook_url = config_data.get("slack-webhook-url")
+    slack_requester = SlackRequester(slack_webhook_url)
+
     print(f"{GREEN}Parsing sitemap for: {args.base_url}{END}")
     sitemap = Sitemap(args.base_url)
 
@@ -160,31 +179,11 @@ if __name__ == "__main__":
                     print(
                         f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {GREEN}[{current_changed_product_name}] item was ADDED -> {current_changed_product_url}{END}"
                     )
-                    # TODO pull this out into a get_permalinks() function
-                    tries = 1
-                    while tries != 3:
-                        try:
-                            product_detail_json = requests.request(
-                                "GET", f"{current_changed_product_url}.json"
-                            ).json()
-                            break
-                        except Exception as exc:
-                            print(
-                                f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {YELLOW}Unable to get json for product - trying {3-tries} more times{END}"
-                            )
-                            tries += 1
-                            time.sleep(1)
-                    if tries == 3:
-                        print(
-                            f"{RED}[!]{END} {CYAN}{datetime.datetime.now()}{END} :: {RED}Giving up on json/details of newly added product{END}"
+                    if slack_requester.url is not None:
+                        slack_requester.send_message(
+                            f"{current_change_product_name}: {current_changed_product_url}"
                         )
-                    else:
-                        variants = product_detail_json["product"]["variants"]
-                        for variant in variants:
-                            print(
-                                f"\t{GREEN}{variant['title']} :: {sitemap.base}/cart/{variant['id']}:1{END}"
-                            )
-                        print()
+                    sitemap.print_variants(current_changed_product_url)
                 else:
                     # item not in both updated and old, and not only in updated catalog - must be removed
                     print(
